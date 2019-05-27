@@ -64,6 +64,7 @@ class ImageClickEvents(QMainWindow):
         self.imageWidth = screen_width // 1.25
         self.imageHeight = screen_height
         self.resize(QSize(screen_width, screen_height))
+        self.min_widget_size = 110
 
         # const codes of button in qt
         # here's mouse buttons:
@@ -78,15 +79,15 @@ class ImageClickEvents(QMainWindow):
         self.resizableWidgets = []
         self.lbl.setGeometry(0, 0, self.imageWidth, self.imageHeight)
 
-        vbox = QVBoxLayout()
-        vbox.addStretch(1)
+        #vbox = QVBoxLayout()
+        #vbox.addStretch(1)
         hbox = QHBoxLayout()
 
         self.openImageBtn = QPushButton('&Открыть изображение', self)
         self.openImageBtn.setGeometry(self.imageWidth+20, 50, 150, 25)
         self.openImageBtn.clicked.connect(self.showOpenFileDialog)
         self.resizableWidgets.append(self.openImageBtn)
-        #vbox
+        #vbox.addWidget(self.openImageBtn)
 
         self.slider = QSlider(Qt.Horizontal, self)
         self.slider.move(self.imageWidth+20, 100)
@@ -95,21 +96,37 @@ class ImageClickEvents(QMainWindow):
         self.slider.setValue(self.recFieldSize)
         self.slider.valueChanged.connect(self.changeSliderValueEvent)
         self.resizableWidgets.append(self.slider)
+        #vbox.addWidget(self.slider)
 
         self.showReceptiveFieldsCheckBox = QCheckBox('&Show mask', self)
         self.showReceptiveFieldsCheckBox.move(self.imageWidth+20, 135)
         self.showReceptiveFieldsCheckBox.stateChanged.connect(self.changeMaskShowing)
         self.resizableWidgets.append(self.showReceptiveFieldsCheckBox)
+        #vbox.addWidget(self.showReceptiveFieldsCheckBox)
 
         self.saveImageBtn = QPushButton('&Сохранить изображение', self)
         self.saveImageBtn.setGeometry(self.imageWidth+20, 175, 130, 25)
         self.saveImageBtn.clicked.connect(self.showSaveFileDialog)
         self.resizableWidgets.append(self.saveImageBtn)
+        #vbox.addWidget(self.saveImageBtn)
 
         self.sendImagesBtn = QPushButton('&Отправить изображение', self)
         self.sendImagesBtn.setGeometry(self.imageWidth+20, 225, 130, 25)
         self.sendImagesBtn.clicked.connect(self.sendOneImage)
         self.resizableWidgets.append(self.sendImagesBtn)
+        #vbox.addWidget(self.sendImagesBtn)
+
+        #vbox.addStretch(5)
+
+        self.lbl.setGeometry(0, 0, self.imageWidth, self.imageHeight)
+        #hbox.addStretch(1)
+        #hbox.addWidget(self.lbl)
+        #hbox.addStretch(1)
+        #hbox.addLayout(vbox)
+
+        #widget = QWidget()
+        #widget.setLayout(hbox)
+        #self.setCentralWidget(widget)
 
         self.update()
         self.show()
@@ -120,18 +137,27 @@ class ImageClickEvents(QMainWindow):
             oldsize = event.oldSize()
             if oldsize.height() == 0 or oldsize.width() == 0:
                 return
+            if oldsize.width() == newsize.width() and oldsize.height() == newsize.height():
+                return
 
-            #print(newsize, oldsize)
-            self.imageWidth *= 1.0*float(newsize.width()) / float(oldsize.width())
-            self.imageHeight *= 1.0*float(newsize.height()) / float(oldsize.height())
-
-            self.lbl.setGeometry(0, 0, newsize.width(), newsize.height())
+            widget_size = newsize.width()-self.imageWidth-50
+            widget_size = widget_size if widget_size >= self.min_widget_size else self.min_widget_size
+            if newsize.width() < self.imageWidth + widget_size + 50:
+                self.resize(self.imageWidth + widget_size + 50, newsize.height())
             dw = newsize.width() - oldsize.width()
             dh =  newsize.height() - oldsize.height()
+
+            self.imageWidth = newsize.width() // 1.25
+            self.imageHeight = newsize.height() - 18
+
+            #print(self.imageWidth, self.imageHeight)
+            ind = 1
             for w in self.resizableWidgets:
-                print(dw, dh)
-                w.setGeometry(self.imageWidth+20, w.y()+2*dh,
-                              w.width()+dw, w.height()+dh)
+                w.setGeometry(self.imageWidth+25, w.y(),
+                              widget_size, w.height())
+                #w.move(self.imageWidth+25, int(self.imageHeight*0.125*ind))
+                ind += 1
+                #w.move(self.imageWidth+25, w.y())
         else:
             self.isNeedResize = True
 
@@ -183,7 +209,7 @@ class ImageClickEvents(QMainWindow):
             return
 
         mx, my = QMouseEvent.pos().x(), QMouseEvent.pos().y()
-        if mx > 700:
+        if mx > self.imageWidth or my > self.imageHeight:
             return
 
         pressedButton = QMouseEvent.button()
@@ -203,6 +229,7 @@ class ImageClickEvents(QMainWindow):
             imgY = (self.y0 + my) // self.xScaled
             self.pointsArray.append(self.Coord(imgX, imgY))
             self.newRectCoord = self.Coord(x=mx, y=my)
+            print(imgX, imgY)
 
             #обновить время последнего изменеения
             self.metafileobj.newIimeChanged()
@@ -221,18 +248,21 @@ class ImageClickEvents(QMainWindow):
             return
 
         file_name, self.metafileobj = getOpeningFilename(file_name)
-
+        self.pointsArray = []
+        for coord in self.metafileobj.pointsList:
+            self.pointsArray.append(self.Coord(x=coord[0], y=coord[1]))
 
         self.cellPixmapUnscaled = QPixmap(file_name)
         self.cellPixmap = self.cellPixmapUnscaled.copy()
-        #self.overlay = self.overlay.scaled(self.cellPixmap.size())
-        #self.overlay.fill(Qt.transparent)
+
         self.isImageLoaded = True
         self.x0 = 0
         self.y0 = 0
         self.xe = min(self.cellPixmap.width(), self.imageWidth)
         self.ye = min(self.cellPixmap.height(), self.imageHeight)
         self.xScaled = 1.0
+
+        self.min_widget_size = self.width() * 0.2 - 50
 
         self.update()
 
@@ -279,8 +309,6 @@ class ImageClickEvents(QMainWindow):
         unscaledHeight = self.cellPixmapUnscaled.height()
 
         painter = QPainter()
-        #self.overlay = QPixmap(self.cellPixmapUnscaled.size())
-        #self.overlay.fill(Qt.transparent)
 
         #get unscaled pixmap without green rectangles
         self.cellPixmap = self.cellPixmapUnscaled.copy()
@@ -300,7 +328,8 @@ class ImageClickEvents(QMainWindow):
                                                  self.xScaled * unscaledHeight,
                                                  Qt.KeepAspectRatioByExpanding)
 
-
+        #self.pixmapHolder = self.pixmapHolder.scaled(self.imageWidth, self.imageHeight)
+        self.pixmapHolder = QPixmap(self.imageWidth, self.imageHeight)
         painter.begin(self.pixmapHolder)
         right_w = min(self.imageWidth, self.cellPixmap.width())
         right_h = min(self.imageHeight, self.cellPixmap.height())
@@ -309,11 +338,16 @@ class ImageClickEvents(QMainWindow):
         painter.end()
 
         #set pixmap, and resize Label
+        #print('Pixmap:', self.pixmapHolder.size())
+        #print('Cell:', self.cellPixmap.size())
+        #print()
+
         if self.isImageLoaded:
+            self.lbl.resize(self.imageWidth, self.imageHeight)
             self.lbl.setPixmap(self.pixmapHolder)
             height = self.cellPixmap.height()
             width = self.cellPixmap.width()
-            self.lbl.resize(min(width, self.imageWidth), min(height, self.imageHeight))
+            #self.lbl.resize(min(width, self.imageWidth), min(height, self.imageHeight))
 
             #move label to the center of screen
             start_x = 0
@@ -326,7 +360,12 @@ class ImageClickEvents(QMainWindow):
             self.lbl.move(start_x, start_y)
 
     def sendOneImage(self):
-        #meta_bytes = bytes(str(self.metafileobj.getDict()), 'utf-8')
+        if not self.isImageLoaded:
+            nope = QMessageBox()
+            nope.setText("Зарузите избражение")
+            nope.exec()
+            return
+        
         #get pixamp bytes in tiff extension
         original_img_bytes = QByteArray()
         original_img_buff = QBuffer(original_img_bytes)
