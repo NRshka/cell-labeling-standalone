@@ -6,6 +6,7 @@ import numpy as np
 def signum(x: int) -> int:
     if x == 0:
         return 0
+
     return x / abs(x)
 
 def get_euqlid(x, y):
@@ -25,6 +26,7 @@ def get_nearest(point: tuple, array: list, edge: int) -> int:
     '''
     if len(array) < 1:
         return -1
+
     min_distance = edge
     nearest_point_index = -1
     ind = -1
@@ -32,7 +34,7 @@ def get_nearest(point: tuple, array: list, edge: int) -> int:
         ind += 1
         distance = get_euqlid(arr_point, point)
         #СДЕЛАТЬ НОРМАЛЬНУЮ ПРОВЕРКУ НА ТУ ЖЕ САМУ ТОЧКУ
-        if distance < min_distance and distance != 0:
+        if distance < min_distance:# and distance != 0:
             min_distance = distance
             nearest_point_index = ind
 
