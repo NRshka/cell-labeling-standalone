@@ -483,15 +483,7 @@ class ImageClickEvents(QMainWindow):
 if __name__ == '__main__':
     if not os.path.isfile(os.path.join('config.json')):
         print('config')
-        req = {
-            'code': ReqCodes.GET_ID._value_,
-            'random_seed': random.randint(0, 999999999)
-        }
-
-        json_request = json.dumps(req)
-        resp = requests.post(client_config['url'], data=json_request,
-                             headers=client_config['headers']).json()
-        client_config['id'] = resp['id']
+        client_config['id'] = random.randint(0, 9999)
 
         with open(os.path.join('config.json'), 'w') as config_file:
             config_file.write(json.dumps(client_config))
